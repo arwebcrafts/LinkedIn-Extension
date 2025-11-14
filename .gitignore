@@ -5,3 +5,6 @@ dist/
 .env
 .env.local
 *.zip
+
+# Auto-generated API key configuration
+src/config/api-key.ts

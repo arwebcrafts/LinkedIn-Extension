@@ -5,11 +5,14 @@
 
 import { StorageManager } from '../core/storage-manager';
 import { CooldownManager } from '../core/warmup-protocol';
+import AIService from '../core/ai-service';
+import { getOpenAIKey, isOpenAIConfigured } from '../config/config';
 
 class BackgroundService {
   private readonly BACKEND_API_URL = 'https://api.kommentify.com'; // Replace with actual backend URL
   private dailyResetAlarm = 'daily-reset';
   private healthCheckAlarm = 'health-check';
+  private aiService: AIService | null = null;
 
   constructor() {
     this.init();
@@ -23,6 +26,9 @@ class BackgroundService {
 
     // Initialize storage
     await StorageManager.initialize();
+
+    // Initialize AI service
+    await this.initializeAI();
 
     // Set up alarms
     this.setupAlarms();
@@ -53,6 +59,20 @@ class BackgroundService {
         case 'GENERATE_COMMENT':
           const comment = await this.generateAIComment(message.post);
           sendResponse({ comment });
+          break;
+
+        case 'GENERATE_POST':
+          const post = await this.generateAIPost(
+            message.topic,
+            message.goal,
+            message.targetAudience
+          );
+          sendResponse({ post });
+          break;
+
+        case 'CONFIGURE_OPENAI':
+          await this.initializeAI();
+          sendResponse({ success: true });
           break;
 
         case 'VERIFY_LICENSE':
@@ -101,6 +121,23 @@ class BackgroundService {
     } catch (error) {
       console.error('Error handling message:', error);
       sendResponse({ error: (error as Error).message });
+    }
+  }
+
+  /**
+   * Initialize AI service with API key
+   */
+  private async initializeAI(): Promise<void> {
+    try {
+      const apiKey = await getOpenAIKey();
+      if (apiKey) {
+        this.aiService = new AIService(apiKey);
+        console.log('✅ AI Service initialized');
+      } else {
+        console.warn('⚠️ No OpenAI API key configured. AI features disabled.');
+      }
+    } catch (error) {
+      console.error('Failed to initialize AI service:', error);
     }
   }
 
@@ -235,36 +272,68 @@ class BackgroundService {
   }
 
   /**
-   * Generate AI comment via backend API
+   * Generate AI comment using OpenAI directly
    */
   private async generateAIComment(post: any): Promise<string> {
     try {
-      const data = await chrome.storage.local.get(['licenseKey']);
-
-      const response = await fetch(`${this.BACKEND_API_URL}/api/generate-comment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.licenseKey}`,
-        },
-        body: JSON.stringify({
-          postContent: post.content,
-          authorName: post.authorName,
-          context: 'linkedin',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (!this.aiService) {
+        // Re-initialize if needed
+        await this.initializeAI();
       }
 
-      const result = await response.json();
-      return result.comment;
+      if (!this.aiService) {
+        throw new Error('AI Service not initialized');
+      }
+
+      // Analyze post to determine best approach
+      const analysis = this.aiService.analyzePostForComment(post.content);
+
+      // Generate engaging comment
+      const comment = await this.aiService.generateComment({
+        postContent: post.content,
+        authorName: post.authorName,
+        authorTitle: post.authorTitle,
+        tone: analysis.suggestedTone,
+        length: analysis.suggestedLength,
+      });
+
+      console.log('✅ AI comment generated:', comment.substring(0, 50) + '...');
+      return comment;
 
     } catch (error) {
       console.error('Failed to generate AI comment:', error);
-      // Fallback comment
-      return 'Great insights! Thanks for sharing.';
+      // High-quality fallback
+      return 'This resonates with my own experience. Great perspective on this topic!';
+    }
+  }
+
+  /**
+   * Generate AI post (lead magnet style)
+   */
+  private async generateAIPost(topic: string, goal?: string, targetAudience?: string): Promise<string> {
+    try {
+      if (!this.aiService) {
+        await this.initializeAI();
+      }
+
+      if (!this.aiService) {
+        throw new Error('AI Service not initialized');
+      }
+
+      const post = await this.aiService.generatePost({
+        topic,
+        goal: (goal as any) || 'lead_generation',
+        tone: 'professional',
+        includeCallToAction: true,
+        targetAudience,
+      });
+
+      console.log('✅ AI post generated:', post.substring(0, 100) + '...');
+      return post;
+
+    } catch (error) {
+      console.error('Failed to generate AI post:', error);
+      throw error;
     }
   }
 

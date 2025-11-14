@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "LinkedIn engagement automation with advanced anti-detection",
   "scripts": {
+    "setup": "node setup-api-key.js",
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
     "lint": "eslint src/**/*.ts",

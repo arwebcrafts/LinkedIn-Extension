@@ -9,6 +9,8 @@ import './popup.css';
 import { StorageManager } from '../core/storage-manager';
 import { WarmupProtocol, CooldownManager } from '../core/warmup-protocol';
 import { AccountAge, SpeedMode } from '../types';
+import PostCreator from './PostCreator';
+import { initializeWithAPIKey, isOpenAIConfigured } from '../config/config';
 
 interface Stats {
   todayActions: number;
@@ -28,6 +30,9 @@ const Popup: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'history'>('dashboard');
   const [licenseKey, setLicenseKey] = useState('');
   const [isLicenseValid, setIsLicenseValid] = useState(false);
+  const [showPostCreator, setShowPostCreator] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [isOpenAISetup, setIsOpenAISetup] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -247,6 +252,15 @@ const Popup: React.FC = () => {
             </div>
           )}
 
+          {/* AI Tools */}
+          <div className="ai-tools-section">
+            <h3>🤖 AI Content Tools</h3>
+            <button onClick={() => setShowPostCreator(true)} className="btn-create-post">
+              ✨ Create Lead Magnet Post
+            </button>
+            <p className="help-text-small">Generate viral, engaging LinkedIn posts that drive real connections</p>
+          </div>
+
           {/* Quick Info */}
           <div className="info-section">
             <h3>Safety First</h3>
@@ -259,6 +273,9 @@ const Popup: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* POST CREATOR MODAL */}
+      {showPostCreator && <PostCreator onClose={() => setShowPostCreator(false)} />}
 
       {/* SETTINGS TAB */}
       {activeTab === 'settings' && (
