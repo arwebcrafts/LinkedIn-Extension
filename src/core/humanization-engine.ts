@@ -368,7 +368,7 @@ export class HumanizationEngine {
   /**
    * Crypto-secure random number in range
    */
-  private cryptoRandomRange(min: number, max: number): number {
+  public cryptoRandomRange(min: number, max: number): number {
     const range = max - min;
     const bytesNeeded = Math.ceil(Math.log2(range) / 8);
     const randomBytes = new Uint8Array(bytesNeeded);
