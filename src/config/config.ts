@@ -37,16 +37,14 @@ export async function getConfig(): Promise<AppConfig> {
   let autoLoadedApiKey = '';
   try {
     const apiKeyModule = await import('./api-key');
-    autoLoadedApiKey = apiKeyModule.OPENAI_API_KEY || '';
+    autoLoadedApiKey = (apiKeyModule as any).OPENAI_API_KEY || '';
   } catch (e) {
-    // api-key.ts doesn't exist yet, that's okay
-    // User can set it up via the setup script or popup
-    console.log('API key not auto-configured. Will need manual setup.');
+    // api-key.ts not configured yet
   }
 
   // Default configuration
   const defaultConfig: AppConfig = {
-    openaiApiKey: autoLoadedApiKey || '', // Set via setup script or popup
+    openaiApiKey: autoLoadedApiKey, // Set via setup script or popup
     backendApiUrl: 'https://api.kommentify.com', // Replace with your backend
     environment: 'development',
     version: '1.0.0',
